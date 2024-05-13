@@ -9,7 +9,7 @@ app.get("/", (req, res, next) => {
   // throw error;
   res.json({ message: "Welcome to api" });
 });
-
+app.use(express.json());
 app.use("/api/users", userRouter);
 
 //global handler
