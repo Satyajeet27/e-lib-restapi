@@ -1,6 +1,6 @@
 import express from "express";
-import createHttpError from "http-errors";
 import globalErrorHandler from "./middlewares/globalErrorHandler";
+import userRouter from "./user/userRoute";
 
 const app = express();
 
@@ -9,6 +9,8 @@ app.get("/", (req, res, next) => {
   // throw error;
   res.json({ message: "Welcome to api" });
 });
+
+app.use("/api/users", userRouter);
 
 //global handler
 app.use(globalErrorHandler);
