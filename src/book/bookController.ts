@@ -2,10 +2,12 @@ import { NextFunction, Request, Response } from "express";
 import cloudinary from "../config/cloudinary";
 import path from "path";
 import createHttpError from "http-errors";
+import bookModel from "./bookModel";
+import fs from "node:fs";
 
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
   console.log("files", req.files);
-
+  const { title, genre } = req.body;
   try {
     //typecasting
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -31,14 +33,38 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
     );
     //cloudinary mostly image and videos upload ke liye use hota hai, pdf ke liye thoda different h
 
-    const bookFileUpload = await cloudinary.uploader.upload(bookFilePath, {
-      //humlog pdf upload kr rhe h, so resource type raw use kr rhe h, image and video ke case m use nahi hota h
-      resource_type: "raw",
-      filename_override: bookFileName,
-      folder: "book-pdfs",
-      format: "pdf",
+    const bookFileUploadResult = await cloudinary.uploader.upload(
+      bookFilePath,
+      {
+        //humlog pdf upload kr rhe h, so resource type raw use kr rhe h, image and video ke case m use nahi hota h
+        resource_type: "raw",
+        filename_override: bookFileName,
+        folder: "book-pdfs",
+        format: "pdf",
+      }
+    );
+    console.log("upload bookfile upload", bookFileUploadResult);
+    const newBook = await bookModel.create({
+      title,
+      genre,
+      author: "6641bfecfc4662cefadf8508",
+      coverImage: uploadResult.secure_url,
+      file: bookFileUploadResult.secure_url,
     });
-    console.log("upload bookfile upload", bookFileUpload);
+    try {
+      //deleting temp file after uploading in cloudinary
+      await fs.promises.unlink(filePath);
+      await fs.promises.unlink(bookFilePath);
+    } catch (error) {
+      next(
+        createHttpError(
+          500,
+          "Something went wrong while removing temporary files"
+        )
+      );
+    }
+
+    return res.status(201).json({ id: newBook._id });
   } catch (error) {
     console.log(error);
     next(createHttpError(500, "Error while uploading the files"));
