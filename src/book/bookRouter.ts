@@ -2,6 +2,7 @@ import { Router } from "express";
 import { createBook } from "./bookController";
 import multer from "multer";
 import path from "path";
+import authenticate from "../middlewares/authenticate";
 
 const bookRouter = Router();
 
@@ -14,6 +15,7 @@ const upload = multer({
 // we are selecting field because we have multiple files, one is coverimage and other ook pdf
 bookRouter.post(
   "/",
+  authenticate,
   upload.fields([
     { name: "coverImage", maxCount: 1 },
     { name: "file", maxCount: 1 },

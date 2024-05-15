@@ -6,8 +6,11 @@ import bookModel from "./bookModel";
 import fs from "node:fs";
 
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
-  console.log("files", req.files);
+  //   console.log("files", req.files);
   const { title, genre } = req.body;
+
+  //@ts-ignore
+  console.log("userId", req.userId);
   try {
     //typecasting
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -43,7 +46,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
         format: "pdf",
       }
     );
-    console.log("upload bookfile upload", bookFileUploadResult);
+    // console.log("upload bookfile upload", bookFileUploadResult);
     const newBook = await bookModel.create({
       title,
       genre,
