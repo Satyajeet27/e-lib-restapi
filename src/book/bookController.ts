@@ -4,13 +4,13 @@ import path from "path";
 import createHttpError from "http-errors";
 import bookModel from "./bookModel";
 import fs from "node:fs";
+import { AuthRequest } from "../middlewares/authenticate";
 
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
   //   console.log("files", req.files);
   const { title, genre } = req.body;
-
   //@ts-ignore
-  console.log("userId", req.userId);
+  //   console.log("userId", req.userId);
   try {
     //typecasting
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -50,7 +50,7 @@ const createBook = async (req: Request, res: Response, next: NextFunction) => {
     const newBook = await bookModel.create({
       title,
       genre,
-      author: "6641bfecfc4662cefadf8508",
+      author: (req as AuthRequest).userId,
       coverImage: uploadResult.secure_url,
       file: bookFileUploadResult.secure_url,
     });
