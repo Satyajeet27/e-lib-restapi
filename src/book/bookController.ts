@@ -5,6 +5,7 @@ import createHttpError from "http-errors";
 import bookModel from "./bookModel";
 import fs from "node:fs";
 import { AuthRequest } from "../middlewares/authenticate";
+import userModel from "../user/userModel";
 
 const createBook = async (req: Request, res: Response, next: NextFunction) => {
   //   console.log("files", req.files);
@@ -97,7 +98,7 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     let completeCoverImage = "";
     if (files.coverImage) {
       const fileName = files.coverImage[0].filename;
-      const converMimeType = files.coverImage[0].mimetype.split(" ").at(-1);
+      const converMimeType = files.coverImage[0].mimetype.split("/").at(-1);
 
       //send files to cloudinary
       const filePath = path.resolve(
@@ -105,6 +106,7 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
         "../../public/data/uploads/" + fileName
       );
       completeCoverImage = fileName;
+
       const uploadResult = await cloudinary.uploader.upload(filePath, {
         filename_override: completeCoverImage,
         folder: "book-covers",
@@ -122,10 +124,11 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
       );
       const bookFileName = files.file[0].filename;
       completeFileName = bookFileName;
+
       const uploadResultPdf = await cloudinary.uploader.upload(bookFilePath, {
         resource_type: "raw",
         filename_override: completeFileName,
-        folder: "book-covers",
+        folder: "book-pdfs",
         format: "pdf",
       });
       completeFileName = uploadResultPdf.secure_url;
@@ -145,7 +148,7 @@ const updateBook = async (req: Request, res: Response, next: NextFunction) => {
     );
     res.json(updatedBook);
   } catch (error) {
-    console.log(error);
+    // console.log("eerpr", error);
     return next(
       createHttpError(500, "Something went wrong while updating book")
     );
@@ -177,4 +180,46 @@ const getSingleBooks = async (
   }
 };
 
-export { createBook, updateBook, listBooks, getSingleBooks };
+const deleteBook = async (req: Request, res: Response, next: NextFunction) => {
+  const bookId = req.params.bookId;
+  const book = await bookModel.findOne({ _id: bookId });
+  if (!book) {
+    return next(createHttpError(404, "Book not found"));
+  }
+  if (book.author.toString() !== (req as AuthRequest).userId) {
+    return next(createHttpError(403, "You cannot delete others author book"));
+  }
+
+  //deleting from cloudinary
+
+  //creating public id for image
+  const coverFileSplits = book.coverImage.split("/");
+  const coverImagePublicId =
+    coverFileSplits?.at(-2) + "/" + coverFileSplits?.at(-1)?.split(".")[0];
+
+  //creating public id for files
+  const bookFileSplits = book.file.split("/");
+  const bookFilePublicId = bookFileSplits.at(-2) + "/" + bookFileSplits.at(-1);
+  //   console.log(book);
+  //   console.log(bookFilePublicId);
+  try {
+    await cloudinary.uploader.destroy(coverImagePublicId);
+  } catch (error) {
+    next(
+      createHttpError(500, "Error while deleting coverImage from cloudinary")
+    );
+  }
+  try {
+    await cloudinary.uploader.destroy(bookFilePublicId, {
+      //make sure to mention resource type raw, to delete this file else it will not work
+      resource_type: "raw",
+    });
+  } catch (error) {
+    next(createHttpError(500, "Error while deleting pdfFile from cloudinary"));
+  }
+  await bookModel.deleteOne({ _id: bookId });
+  //status 204 if not returning in datta
+  res.status(204);
+};
+
+export { createBook, updateBook, listBooks, getSingleBooks, deleteBook };
